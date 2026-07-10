@@ -1,0 +1,82 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Placeholder model for Phase 1 (auth only).
+// Extended in later phases with sessions, skills, achievements, etc.
+model User {
+  id              String            @id
+  email           String            @unique
+  timezone        String            @default("UTC")
+  createdAt       DateTime          @default(now())
+  currentStreak   Int               @default(0)
+  longestStreak   Int               @default(0)
+  lastSessionDate DateTime?
+  sessions        Session[]
+  achievements    UserAchievement[]
+  skills          Skill[]
+  insights        Insight[]
+}
+
+model Session {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  plannedMinutes Int
+  actualMinutes  Int?
+  distractions   Int       @default(0)
+  completed      Boolean   @default(false)
+  startedAt      DateTime  @default(now())
+  endedAt        DateTime?
+  skillId        String?
+  skill          Skill?    @relation(fields: [skillId], references: [id], onDelete: SetNull)
+}
+
+model Skill {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  name        String
+  targetHours Int?
+  createdAt   DateTime  @default(now())
+  sessions    Session[]
+}
+
+model Achievement {
+  id          String            @id @default(uuid())
+  key         String            @unique
+  title       String
+  description String
+  icon        String
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  unlockedAt    DateTime    @default(now())
+  viewed        Boolean     @default(false)
+
+  @@unique([userId, achievementId])
+}
+
+model Insight {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // "post_session" | "weekly"
+  content   String
+  sessionId String?
+  createdAt DateTime @default(now())
+}

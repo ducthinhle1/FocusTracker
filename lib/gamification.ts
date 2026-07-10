@@ -1,0 +1,148 @@
+import { Prisma } from "@/generated/prisma/client"
+import type { Session } from "@/generated/prisma/client"
+import { prisma } from "@/lib/prisma"
+import { dateKeyInTimezone, daysBetweenKeys } from "@/lib/date"
+
+export interface UnlockedAchievement {
+  title: string
+  description: string
+  icon: string
+}
+
+export interface GamificationResult {
+  currentStreak: number
+  longestStreak: number
+  newlyUnlocked: UnlockedAchievement[]
+  skillName: string | null
+}
+
+function hourInTimezone(date: Date, timeZone: string): number {
+  const value = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour: "numeric",
+    hour12: false,
+  }).format(date)
+  // Midnight can render as "24" in some ICU implementations; normalize to 0.
+  return Number(value) % 24
+}
+
+interface AchievementContext {
+  currentStreak: number
+  completedSessionCount: number
+  totalMinutesBefore: number
+  totalMinutesAfter: number
+  distractions: number
+  endedHour: number
+  // Available to any future skill-conditioned achievement rule; no current
+  // rule depends on it.
+  skillName: string | null
+}
+
+const ACHIEVEMENT_RULES: Record<string, (ctx: AchievementContext) => boolean> = {
+  first_session: (ctx) => ctx.completedSessionCount === 1,
+  streak_3: (ctx) => ctx.currentStreak === 3,
+  streak_7: (ctx) => ctx.currentStreak === 7,
+  streak_30: (ctx) => ctx.currentStreak === 30,
+  hours_10: (ctx) => ctx.totalMinutesBefore < 600 && ctx.totalMinutesAfter >= 600,
+  hours_50: (ctx) => ctx.totalMinutesBefore < 3000 && ctx.totalMinutesAfter >= 3000,
+  zero_distraction: (ctx) => ctx.distractions === 0,
+  night_owl: (ctx) => ctx.endedHour >= 22 || ctx.endedHour < 5,
+  early_bird: (ctx) => ctx.endedHour >= 5 && ctx.endedHour < 7,
+}
+
+/**
+ * Updates the streak and unlocks any newly-qualifying achievements for a
+ * session that just finished with `completed: true`. Must not be called for
+ * a session stopped early — those don't count toward streaks/achievements.
+ *
+ * `skillName` is the name of the skill the session was tagged to (or null
+ * for a general/untagged session) — passed in rather than re-fetched since
+ * the caller already resolved it.
+ */
+export async function applyGamification(
+  session: Session,
+  skillName: string | null
+): Promise<GamificationResult> {
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: session.userId },
+  })
+  const endedAt = session.endedAt!
+
+  const todayKey = dateKeyInTimezone(endedAt, user.timezone)
+  const lastKey = user.lastSessionDate
+    ? dateKeyInTimezone(user.lastSessionDate, user.timezone)
+    : null
+
+  let currentStreak: number
+  if (lastKey === todayKey) {
+    currentStreak = user.currentStreak
+  } else if (lastKey !== null && daysBetweenKeys(lastKey, todayKey) === 1) {
+    currentStreak = user.currentStreak + 1
+  } else {
+    currentStreak = 1
+  }
+  const longestStreak = Math.max(user.longestStreak, currentStreak)
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { currentStreak, longestStreak, lastSessionDate: endedAt },
+  })
+
+  const [completedSessionCount, totalMinutesAgg, unlockedAchievements, allAchievements] =
+    await Promise.all([
+      prisma.session.count({ where: { userId: user.id, completed: true } }),
+      prisma.session.aggregate({
+        where: { userId: user.id, completed: true },
+        _sum: { actualMinutes: true },
+      }),
+      prisma.userAchievement.findMany({
+        where: { userId: user.id },
+        select: { achievement: { select: { key: true } } },
+      }),
+      prisma.achievement.findMany(),
+    ])
+
+  const totalMinutesAfter = totalMinutesAgg._sum.actualMinutes ?? 0
+  const totalMinutesBefore = totalMinutesAfter - (session.actualMinutes ?? 0)
+  const alreadyUnlockedKeys = new Set(
+    unlockedAchievements.map((entry) => entry.achievement.key)
+  )
+
+  const ctx: AchievementContext = {
+    currentStreak,
+    completedSessionCount,
+    totalMinutesBefore,
+    totalMinutesAfter,
+    distractions: session.distractions,
+    endedHour: hourInTimezone(endedAt, user.timezone),
+    skillName,
+  }
+
+  const newlyUnlocked: UnlockedAchievement[] = []
+
+  for (const achievement of allAchievements) {
+    if (alreadyUnlockedKeys.has(achievement.key)) continue
+    const rule = ACHIEVEMENT_RULES[achievement.key]
+    if (!rule?.(ctx)) continue
+
+    try {
+      await prisma.userAchievement.create({
+        data: { userId: user.id, achievementId: achievement.id },
+      })
+      newlyUnlocked.push({
+        title: achievement.title,
+        description: achievement.description,
+        icon: achievement.icon,
+      })
+    } catch (error) {
+      // Unique constraint race (e.g. a duplicate completion request) —
+      // someone else already unlocked it, just skip.
+      const isDuplicate =
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      if (!isDuplicate) throw error
+    }
+  }
+
+  return { currentStreak, longestStreak, newlyUnlocked, skillName }
+}
