@@ -1,37 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FocusStreak 🔥
 
-## Getting Started
+A gamified focus-session tracker that helps you build a real attention habit — not just another Pomodoro timer.
 
-First, run the development server:
+**[Live Demo](https://focus-tracker.vercel.app)** <!-- update with your actual production URL -->
+
+---
+
+## Why I built this
+
+Most focus/productivity apps just count time. FocusStreak is built around a simple idea: **the moment you're tempted to quit is the moment that matters most.** Instead of a plain "Stop" button, ending a session early takes you through a short, honest friction flow — you're shown exactly what you'll lose (streak, achievements) and asked to confirm with a deliberate hold-to-confirm gesture, not a single accidental tap. It's a small mechanic, but it's the one thing that makes this app different from a generic timer.
+
+## Features
+
+- **Session tracking** — pick a skill (or skip), pick a duration, focus. Distraction detection runs automatically via the browser's Page Visibility API (debounced, so a stray notification doesn't count against you).
+- **Stop-friction flow** — leaving a session early shows what you'd lose, then requires a 2.5s hold-to-confirm — a deliberate commitment device, not a punishment.
+- **Streaks & 18 achievements** — day-streak tracking (timezone-aware), plus achievements spanning milestones, skill mastery, variety, comebacks after a missed day, and one tied directly to resisting the urge to quit mid-session.
+- **Skills** — tag sessions to a skill you're building (e.g. "AWS Certification"), track hours against an optional target goal.
+- **AI-generated feedback** — short, specific encouragement after each session and a weekly pattern-insight on the dashboard, powered by the Claude API (Haiku), cached and rate-limited to keep costs predictable.
+- **Full history** — filterable, paginated session log.
+- **Mobile-friendly** — every screen works down to phone width, including touch-sized controls for the hold-to-confirm interaction.
+
+## Tech stack
+
+| Layer | Choice |
+|---|---|
+| Framework | Next.js 16 (App Router), TypeScript |
+| Styling | Tailwind CSS, shadcn/ui |
+| Database | Postgres via Supabase |
+| ORM | Prisma |
+| Auth | Supabase Auth (email/password + Google OAuth) |
+| Charts | Custom SVG (bar-grow / line-draw animations) |
+| AI | Anthropic API (Claude Haiku) |
+| Deploy | Vercel |
+
+## A few engineering decisions worth mentioning
+
+- **Server-authoritative timing** — session duration is always calculated server-side from stored `startedAt`/`endedAt` timestamps, never trusted from the client. This prevents someone from editing devtools to fake a longer session and unlock achievements they didn't earn.
+- **Timezone-correct streaks** — day boundaries for streak calculations use the user's own timezone (captured at signup), not server UTC, so "missing a day" means the same thing regardless of where the server happens to be.
+- **Session persistence across refresh** — a session row is created the moment you hit Start, so refreshing mid-session resumes the timer instead of losing progress.
+- **Graceful AI degradation** — if the Claude API key is missing, the call fails, or the model refuses, the app falls back to a friendly static message instead of breaking. AI features are additive, never a single point of failure.
+- **Cached, rate-limited AI calls** — insights are cached (by session, and on a 7-day rolling window for weekly summaries) and capped per user per day, so cost stays predictable regardless of usage patterns.
+
+## Local development
 
 ```bash
+git clone https://github.com/ducthinhle1/FocusTracker.git
+cd FocusTracker/focus-tracker
+npm install
+cp .env.example .env.local   # fill in your own Supabase + Anthropic keys
+npx prisma migrate dev
+npx prisma db seed
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Required environment variables (see `.env.example`):
+```
+DATABASE_URL              # Supabase pooled connection string
+DIRECT_URL                # Supabase direct connection (for Prisma migrations)
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+ANTHROPIC_API_KEY
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## What's next
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# FocusTracker
+- Streak-freeze / grace-day mechanic (currently a deliberate hard-reset design — could be softened)
+- Browser extension for actual cross-app distraction blocking (the current web-app version can only detect leaving the browser tab)
+- Notification/badge dot for unviewed achievement unlocks
