@@ -18,13 +18,19 @@ export async function AppHeader() {
     : 0
 
   return (
-    <header className="flex items-center justify-between gap-3 border-b bg-background px-4 py-3 sm:px-6">
-      <div className="flex items-center gap-4">
+    <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-[#241A14]/8 bg-[#FBF5EC]/90 px-5 py-3.5 backdrop-blur-md">
+      <div className="flex min-w-0 items-center gap-5">
         <Link
           href="/dashboard"
-          className="shrink-0 text-sm font-bold tracking-tight text-foreground"
+          className="flex shrink-0 items-center gap-1.5 font-[family-name:var(--font-sora)] text-lg font-extrabold text-[#241A14]"
         >
-          Focus<span className="text-primary">Streak</span>
+          <span className="text-xl">🔥</span>
+          <span>
+            Focus
+            <span className="bg-[linear-gradient(135deg,#FF9142,#EF2D46)] bg-clip-text text-transparent">
+              Streak
+            </span>
+          </span>
         </Link>
         <NavBar hasUnviewedAchievements={unviewedCount > 0} />
       </div>

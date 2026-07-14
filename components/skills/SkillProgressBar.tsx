@@ -1,17 +1,16 @@
 interface SkillProgressBarProps {
   minutesLogged: number
   targetHours: number | null
+  color: string
 }
 
-const BAR_COLOR = "#2a78d6"
-
-export function SkillProgressBar({ minutesLogged, targetHours }: SkillProgressBarProps) {
+export function SkillProgressBar({ minutesLogged, targetHours, color }: SkillProgressBarProps) {
   const hoursLogged = minutesLogged / 60
 
   if (targetHours === null || targetHours <= 0) {
     return (
-      <p className="text-sm text-muted-foreground">
-        {hoursLogged.toFixed(1)} hours logged
+      <p className="m-0 text-[12.5px] font-semibold text-[#8A7B6C]">
+        {hoursLogged.toFixed(1)}h logged · no goal set
       </p>
     )
   }
@@ -19,9 +18,9 @@ export function SkillProgressBar({ minutesLogged, targetHours }: SkillProgressBa
   const percent = Math.min(100, Math.round((hoursLogged / targetHours) * 100))
 
   return (
-    <div className="flex flex-col gap-1">
+    <div>
       <div
-        className="h-2 w-full overflow-hidden rounded-full bg-muted"
+        className="h-[9px] w-full overflow-hidden rounded-full bg-[#241A14]/[0.07]"
         role="progressbar"
         aria-valuenow={percent}
         aria-valuemin={0}
@@ -29,11 +28,11 @@ export function SkillProgressBar({ minutesLogged, targetHours }: SkillProgressBa
       >
         <div
           className="h-full rounded-full transition-[width]"
-          style={{ width: `${percent}%`, backgroundColor: BAR_COLOR }}
+          style={{ width: `${percent}%`, backgroundColor: color }}
         />
       </div>
-      <p className="text-xs text-muted-foreground">
-        {hoursLogged.toFixed(1)} / {targetHours}h ({percent}%)
+      <p className="m-0 mt-1.5 text-xs font-semibold text-[#8A7B6C]">
+        {hoursLogged.toFixed(1)}h · {percent}% to goal
       </p>
     </div>
   )

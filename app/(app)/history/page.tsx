@@ -4,11 +4,25 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@/generated/prisma/client"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { HistoryFilters } from "@/components/history/HistoryFilters"
+import { LocalDateTime } from "@/components/LocalDateTime"
 
 const PAGE_SIZE = 20
+
+// Rendered client-side in the browser's own local timezone (see
+// LocalDateTime) — never a timezone stored on the server.
+const SESSION_DATE_FORMAT: Intl.DateTimeFormatOptions = {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+}
+
+const STATUS_PILL_COMPLETED =
+  "rounded-full bg-[#17B26A]/[0.08] px-2.5 py-1 text-[11.5px] font-bold whitespace-nowrap text-[#17B26A]"
+const STATUS_PILL_STOPPED =
+  "rounded-full bg-[#241A14]/[0.06] px-2.5 py-1 text-[11.5px] font-bold whitespace-nowrap text-[#8A7B6C]"
 
 interface HistorySearchParams {
   skill?: string
@@ -32,8 +46,6 @@ export default async function HistoryPage({
   if (!user) {
     redirect("/login")
   }
-
-  const appUser = await prisma.user.findUniqueOrThrow({ where: { id: user.id } })
 
   const skillParam = params.skill ?? "all"
   const statusParam = params.status ?? "all"
@@ -72,15 +84,6 @@ export default async function HistoryPage({
     include: { skill: { select: { name: true } } },
   })
 
-  const sessionDateFormatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: appUser.timezone,
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  })
-
   function buildHref(overrides: {
     skill?: string
     status?: string
@@ -105,159 +108,175 @@ export default async function HistoryPage({
   const noFiltersApplied = skillParam === "all" && statusParam === "all"
 
   return (
-    <div className="flex-1 bg-background px-4 py-8">
-      <div className="mx-auto flex max-w-4xl flex-col gap-6">
+    <div className="flex-1 bg-[#FBF5EC] px-5 py-7 font-[family-name:var(--font-manrope)] text-[#241A14]">
+      <div className="mx-auto flex max-w-[900px] flex-col gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">History</h1>
-          <p className="text-sm text-muted-foreground">
-            All of your focus sessions.
-          </p>
+          <h1 className="m-0 font-[family-name:var(--font-sora)] text-[26px] font-extrabold">
+            History
+          </h1>
+          <p className="m-0 text-sm text-[#8A7B6C]">All of your focus sessions.</p>
         </div>
 
-        <HistoryFilters skills={skills} />
+        <div className="flex flex-wrap gap-2.5">
+          <HistoryFilters skills={skills} />
+          <Link
+            href={buildHref({
+              sort: sortParam === "desc" ? "asc" : "desc",
+              page: 1,
+            })}
+            className="rounded-[10px] border border-[#241A14]/12 bg-white px-3.5 py-2.5 text-[13px] font-semibold text-[#241A14]"
+          >
+            Date {sortParam === "desc" ? "↓" : "↑"}
+          </Link>
+        </div>
 
         {totalCount === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center gap-4 py-8 text-center">
-              <p className="text-sm text-muted-foreground">
-                {noFiltersApplied
-                  ? "You haven't completed any sessions yet."
-                  : "No sessions match these filters."}
-              </p>
-              {noFiltersApplied ? (
-                <Button asChild>
-                  <Link href="/session">Start your first session</Link>
-                </Button>
-              ) : (
-                <Button asChild variant="outline">
-                  <Link href="/history">Clear filters</Link>
-                </Button>
-              )}
-            </CardContent>
-          </Card>
+          <div className="flex flex-col items-center gap-3.5 rounded-[20px] border border-[#241A14]/[0.06] bg-white px-5 py-10 text-center">
+            <p className="m-0 text-sm text-[#8A7B6C]">
+              {noFiltersApplied
+                ? "You haven't completed any sessions yet."
+                : "No sessions match these filters."}
+            </p>
+            {noFiltersApplied ? (
+              <Link
+                href="/session"
+                className="inline-block rounded-full bg-[linear-gradient(135deg,#FF9142,#EF2D46)] px-5.5 py-3 text-[13.5px] font-extrabold text-white"
+              >
+                Start a focus session
+              </Link>
+            ) : (
+              <Link
+                href="/history"
+                className="inline-block rounded-full border border-[#241A14]/12 bg-white px-5.5 py-3 text-[13.5px] font-extrabold text-[#241A14]"
+              >
+                Clear filters
+              </Link>
+            )}
+          </div>
         ) : (
           <>
             {/* Table on sm+ screens — a 6-column table is too cramped below
                 that, so narrow screens get a stacked card list instead. */}
-            <Card className="hidden sm:block">
-              <CardContent className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-xs text-muted-foreground">
-                      <th className="pb-2 pr-4 font-medium">
-                        <Link
-                          href={buildHref({
-                            sort: sortParam === "desc" ? "asc" : "desc",
-                            page: 1,
-                          })}
-                          className="inline-flex items-center gap-1 hover:text-foreground"
+            <div className="hidden overflow-x-auto rounded-[20px] border border-[#241A14]/[0.06] bg-white sm:block">
+              <table className="w-full text-[13.5px]">
+                <thead>
+                  <tr className="border-b border-[#241A14]/8 text-left">
+                    <th className="px-4 py-3 text-[11.5px] font-bold tracking-[0.04em] text-[#8A7B6C] uppercase">
+                      Date
+                    </th>
+                    <th className="px-4 py-3 text-[11.5px] font-bold tracking-[0.04em] text-[#8A7B6C] uppercase">
+                      Skill
+                    </th>
+                    <th className="px-4 py-3 text-[11.5px] font-bold tracking-[0.04em] text-[#8A7B6C] uppercase">
+                      Planned
+                    </th>
+                    <th className="px-4 py-3 text-[11.5px] font-bold tracking-[0.04em] text-[#8A7B6C] uppercase">
+                      Actual
+                    </th>
+                    <th className="px-4 py-3 text-[11.5px] font-bold tracking-[0.04em] text-[#8A7B6C] uppercase">
+                      Distractions
+                    </th>
+                    <th className="px-4 py-3 text-[11.5px] font-bold tracking-[0.04em] text-[#8A7B6C] uppercase">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#241A14]/5">
+                  {sessions.map((session) => (
+                    <tr key={session.id}>
+                      <td className="px-4 py-2.5 whitespace-nowrap font-semibold text-[#241A14]">
+                        <LocalDateTime
+                          iso={session.startedAt.toISOString()}
+                          options={SESSION_DATE_FORMAT}
+                        />
+                      </td>
+                      <td className="px-4 py-2.5 text-[#6B5E4F]">
+                        {session.skill?.name ?? "General"}
+                      </td>
+                      <td className="px-4 py-2.5 text-[#6B5E4F]">
+                        {session.plannedMinutes} min
+                      </td>
+                      <td className="px-4 py-2.5 text-[#6B5E4F]">
+                        {session.actualMinutes ?? 0} min
+                      </td>
+                      <td className="px-4 py-2.5 text-[#6B5E4F]">
+                        {session.distractions}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span
+                          className={
+                            session.completed
+                              ? STATUS_PILL_COMPLETED
+                              : STATUS_PILL_STOPPED
+                          }
                         >
-                          Date {sortParam === "desc" ? "↓" : "↑"}
-                        </Link>
-                      </th>
-                      <th className="pb-2 pr-4 font-medium">Skill</th>
-                      <th className="pb-2 pr-4 font-medium">Planned</th>
-                      <th className="pb-2 pr-4 font-medium">Actual</th>
-                      <th className="pb-2 pr-4 font-medium">Distractions</th>
-                      <th className="pb-2 font-medium">Status</th>
+                          {session.completed ? "Completed" : "Stopped early"}
+                        </span>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {sessions.map((session) => (
-                      <tr key={session.id}>
-                        <td className="py-2 pr-4 whitespace-nowrap text-foreground">
-                          {sessionDateFormatter.format(session.startedAt)}
-                        </td>
-                        <td className="py-2 pr-4 text-muted-foreground">
-                          {session.skill?.name ?? "General"}
-                        </td>
-                        <td className="py-2 pr-4 text-muted-foreground">
-                          {session.plannedMinutes} min
-                        </td>
-                        <td className="py-2 pr-4 text-muted-foreground">
-                          {session.actualMinutes ?? 0} min
-                        </td>
-                        <td className="py-2 pr-4 text-muted-foreground">
-                          {session.distractions}
-                        </td>
-                        <td className="py-2">
-                          <span
-                            className={
-                              session.completed
-                                ? "rounded-full bg-[#0ca30c]/10 px-2 py-0.5 text-xs text-[#0ca30c]"
-                                : "rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-                            }
-                          >
-                            {session.completed ? "Completed" : "Stopped early"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </CardContent>
-            </Card>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-            <div className="flex flex-col gap-2 sm:hidden">
-              <Link
-                href={buildHref({
-                  sort: sortParam === "desc" ? "asc" : "desc",
-                  page: 1,
-                })}
-                className="inline-flex items-center gap-1 self-start text-xs text-muted-foreground hover:text-foreground"
-              >
-                Sorted by date {sortParam === "desc" ? "↓" : "↑"}
-              </Link>
+            <div className="flex flex-col gap-2.5 sm:hidden">
               {sessions.map((session) => (
-                <Card key={session.id}>
-                  <CardContent className="flex flex-col gap-1.5 py-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium text-foreground">
-                        {sessionDateFormatter.format(session.startedAt)}
-                      </span>
-                      <span
-                        className={
-                          session.completed
-                            ? "rounded-full bg-[#0ca30c]/10 px-2 py-0.5 text-xs text-[#0ca30c]"
-                            : "rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-                        }
-                      >
-                        {session.completed ? "Completed" : "Stopped early"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {session.skill?.name ?? "General"} ·{" "}
-                      {session.actualMinutes ?? 0}/{session.plannedMinutes} min ·{" "}
-                      {session.distractions}{" "}
-                      {session.distractions === 1 ? "distraction" : "distractions"}
-                    </p>
-                  </CardContent>
-                </Card>
+                <div
+                  key={session.id}
+                  className="rounded-2xl border border-[#241A14]/[0.06] bg-white px-4 py-3.5"
+                >
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <span className="text-[13.5px] font-bold text-[#241A14]">
+                      <LocalDateTime
+                        iso={session.startedAt.toISOString()}
+                        options={SESSION_DATE_FORMAT}
+                      />
+                    </span>
+                    <span
+                      className={
+                        session.completed ? STATUS_PILL_COMPLETED : STATUS_PILL_STOPPED
+                      }
+                    >
+                      {session.completed ? "Completed" : "Stopped early"}
+                    </span>
+                  </div>
+                  <p className="m-0 text-[12.5px] text-[#8A7B6C]">
+                    {session.skill?.name ?? "General"} · {session.actualMinutes ?? 0}{" "}
+                    min / {session.plannedMinutes} min · {session.distractions}{" "}
+                    {session.distractions === 1 ? "distraction" : "distractions"}
+                  </p>
+                </div>
               ))}
             </div>
 
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
+            <div className="flex items-center justify-between pt-1">
+              <p className="m-0 text-[13px] text-[#8A7B6C]">
                 Page {currentPage} of {totalPages} ({totalCount} total)
               </p>
               <div className="flex gap-2">
                 {currentPage > 1 ? (
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={buildHref({ page: currentPage - 1 })}>Previous</Link>
-                  </Button>
-                ) : (
-                  <Button variant="outline" size="sm" disabled>
+                  <Link
+                    href={buildHref({ page: currentPage - 1 })}
+                    className="rounded-lg border border-[#241A14]/12 bg-white px-3.5 py-2 text-[12.5px] font-bold text-[#241A14]"
+                  >
                     Previous
-                  </Button>
+                  </Link>
+                ) : (
+                  <span className="cursor-not-allowed rounded-lg border border-[#241A14]/12 bg-white px-3.5 py-2 text-[12.5px] font-bold text-[#241A14]/40">
+                    Previous
+                  </span>
                 )}
                 {currentPage < totalPages ? (
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={buildHref({ page: currentPage + 1 })}>Next</Link>
-                  </Button>
-                ) : (
-                  <Button variant="outline" size="sm" disabled>
+                  <Link
+                    href={buildHref({ page: currentPage + 1 })}
+                    className="rounded-lg border border-[#241A14]/12 bg-white px-3.5 py-2 text-[12.5px] font-bold text-[#241A14]"
+                  >
                     Next
-                  </Button>
+                  </Link>
+                ) : (
+                  <span className="cursor-not-allowed rounded-lg border border-[#241A14]/12 bg-white px-3.5 py-2 text-[12.5px] font-bold text-[#241A14]/40">
+                    Next
+                  </span>
                 )}
               </div>
             </div>

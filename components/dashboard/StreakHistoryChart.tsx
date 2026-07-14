@@ -1,31 +1,16 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts"
-import type { ValueType } from "recharts/types/component/DefaultTooltipContent"
 
 interface StreakPoint {
   date: string
   streak: number
 }
 
-const LINE_COLOR = "#eb6834"
-
-function formatShortDate(key: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${key}T12:00:00Z`))
-}
+const CHART_W = 340
+const CHART_H = 160
+const PAD_TOP = 14
+const PAD_BOTTOM = 10
 
 export function StreakHistoryChart() {
   const [points, setPoints] = useState<StreakPoint[] | null>(null)
@@ -51,63 +36,62 @@ export function StreakHistoryChart() {
 
   if (failed) {
     return (
-      <p className="flex h-56 items-center justify-center text-sm text-muted-foreground">
+      <p className="flex h-40 items-center justify-center text-sm text-[#8A7B6C]">
         Couldn&apos;t load streak history.
       </p>
     )
   }
 
   if (!points) {
-    return <div className="h-56 w-full animate-pulse rounded-md bg-muted" />
+    return <div className="h-40 w-full animate-pulse rounded-md bg-[#241A14]/[0.06]" />
   }
 
-  const data = points.map((p) => ({ ...p, label: formatShortDate(p.date) }))
+  // Scales tightly to the actual data (never padded out to an arbitrary
+  // "nice" max like 5 when the real max streak is 1) — same reasoning as the
+  // earlier Recharts Y-axis fix, just expressed in raw SVG geometry now.
+  const maxStreak = Math.max(1, ...points.map((p) => p.streak))
+  const usableH = CHART_H - PAD_TOP - PAD_BOTTOM
+  const stepX = points.length > 1 ? CHART_W / (points.length - 1) : 0
+
+  const coords = points.map((p, i) => ({
+    x: i * stepX,
+    y: PAD_TOP + (usableH - (p.streak / maxStreak) * usableH),
+  }))
+  const linePath = coords
+    .map((c, i) => `${i === 0 ? "M" : "L"}${c.x.toFixed(1)},${c.y.toFixed(1)}`)
+    .join(" ")
+  const areaPath = `${linePath} L${CHART_W.toFixed(1)},${CHART_H} L0,${CHART_H} Z`
+  const endPoint = coords[coords.length - 1]
 
   return (
-    <div className="h-56 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-          <CartesianGrid vertical={false} stroke="#e1e0d9" />
-          <XAxis
-            dataKey="label"
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: "#898781", fontSize: 11 }}
-            interval={Math.max(0, Math.ceil(data.length / 6) - 1)}
-          />
-          <YAxis
-            allowDecimals={false}
-            domain={[0, (dataMax: number) => Math.max(1, dataMax)]}
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: "#898781", fontSize: 12 }}
-            width={28}
-          />
-          <Tooltip
-            cursor={{ stroke: "#c3c2b7" }}
-            contentStyle={{
-              background: "#fcfcfb",
-              border: "1px solid #e1e0d9",
-              borderRadius: 8,
-              fontSize: 12,
-            }}
-            labelStyle={{ color: "#0b0b0b", fontWeight: 600 }}
-            formatter={(value: ValueType | undefined) => [
-              `${value ?? 0} ${value === 1 ? "day" : "days"}`,
-              "Streak",
-            ]}
-          />
-          <Line
-            type="monotone"
-            dataKey="streak"
-            stroke={LINE_COLOR}
-            strokeWidth={2}
-            strokeLinecap="round"
-            dot={false}
-            activeDot={{ r: 5, fill: LINE_COLOR, stroke: "#fcfcfb", strokeWidth: 2 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
+    <svg
+      viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+      className="h-40 w-full overflow-visible"
+      role="img"
+      aria-label="Streak history, last 60 days"
+    >
+      <defs>
+        <linearGradient id="streakFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#FF5A3C" stopOpacity={0.35} />
+          <stop offset="100%" stopColor="#FF5A3C" stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill="url(#streakFill)" />
+      <path
+        d={linePath}
+        fill="none"
+        stroke="#EF2D46"
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{
+          strokeDasharray: 700,
+          animation: "fs-dash-draw 1.1s ease-out",
+        }}
+      />
+      {endPoint && (
+        <circle cx={endPoint.x} cy={endPoint.y} r={4.5} fill="#EF2D46" stroke="#fff" strokeWidth={2} />
+      )}
+    </svg>
   )
 }

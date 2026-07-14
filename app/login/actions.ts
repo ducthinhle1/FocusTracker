@@ -79,6 +79,32 @@ export async function signup(
   }
 }
 
+export async function requestPasswordReset(
+  _prevState: AuthFormState,
+  formData: FormData
+): Promise<AuthFormState> {
+  const email = String(formData.get("email") ?? "")
+
+  if (!email) {
+    return { error: "Email is required." }
+  }
+
+  const supabase = await createClient()
+  const origin = (await headers()).get("origin")
+
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/auth/confirm`,
+  })
+
+  // Always show the same message whether or not the email is registered —
+  // confirming/denying an account's existence here would leak which emails
+  // have accounts.
+  return {
+    message:
+      "If an account exists for this email, we've sent a reset link.",
+  }
+}
+
 export async function signInWithGoogle(formData: FormData) {
   const timezone = getTimezone(formData)
   const supabase = await createClient()

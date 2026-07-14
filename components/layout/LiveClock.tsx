@@ -60,14 +60,14 @@ export function LiveClock({ className }: LiveClockProps) {
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-full border bg-muted/50 px-3 py-1.5",
+        "flex items-center gap-2 rounded-full border border-[#241A14]/8 bg-white px-3.5 py-1.5 font-[family-name:var(--font-manrope)] shadow-[0_1px_2px_rgba(36,26,20,0.04)]",
         className
       )}
     >
-      <span className="hidden text-xs font-medium text-muted-foreground sm:inline">
+      <span className="hidden text-xs font-semibold text-[#8A7B6C] sm:inline">
         {day}
       </span>
-      <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
+      <span className="font-[family-name:var(--font-sora)] text-[13px] font-bold tabular-nums text-[#241A14]">
         {time}
       </span>
     </div>

@@ -1,55 +1,76 @@
 "use client"
 
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts"
-import type { ValueType } from "recharts/types/component/DefaultTooltipContent"
-
 interface SkillWeeklyChartProps {
   data: { weekStart: string; label: string; hours: number }[]
+  color?: string
 }
 
-const BAR_COLOR = "#2a78d6"
+const CHART_W = 340
+const CHART_H = 150
+const PAD_TOP = 10
+const PAD_BOTTOM = 20
+const GAP = 8
+const EMPTY_BAR_COLOR = "#E7E1D6"
 
-export function SkillWeeklyChart({ data }: SkillWeeklyChartProps) {
+export function SkillWeeklyChart({ data, color = "#2F6FED" }: SkillWeeklyChartProps) {
+  const n = data.length
+  const barW = n > 0 ? (CHART_W - GAP * (n + 1)) / n : 0
+  const maxHours = Math.max(1, ...data.map((d) => d.hours))
+  const usableH = CHART_H - PAD_TOP - PAD_BOTTOM
+
+  const bars = data.map((d, i) => {
+    const h = d.hours > 0 ? Math.max(4, (d.hours / maxHours) * usableH) : 2
+    const x = GAP + i * (barW + GAP)
+    const y = PAD_TOP + (usableH - h)
+    return {
+      x,
+      y,
+      width: barW,
+      height: h,
+      labelX: x + barW / 2,
+      label: d.label,
+      fill: d.hours > 0 ? color : EMPTY_BAR_COLOR,
+      delay: i * 50,
+    }
+  })
+
   return (
-    <div className="h-56 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-          <CartesianGrid vertical={false} stroke="#e1e0d9" />
-          <XAxis
-            dataKey="label"
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: "#898781", fontSize: 12 }}
-          />
-          <YAxis
-            allowDecimals={false}
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: "#898781", fontSize: 12 }}
-            width={32}
-          />
-          <Tooltip
-            cursor={{ fill: "#e1e0d9", opacity: 0.4 }}
-            contentStyle={{
-              background: "#fcfcfb",
-              border: "1px solid #e1e0d9",
-              borderRadius: 8,
-              fontSize: 12,
+    <svg
+      viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+      className="h-[140px] w-full overflow-visible"
+      role="img"
+      aria-label="Hours logged per week, last 8 weeks"
+    >
+      {bars.map((bar) => (
+        <g key={bar.labelX}>
+          <rect
+            x={bar.x}
+            y={bar.y}
+            width={bar.width}
+            height={bar.height}
+            rx={6}
+            fill={bar.fill}
+            className="animate-fs-bar-grow"
+            style={{
+              transformOrigin: `${bar.labelX}px ${PAD_TOP + usableH}px`,
+              animationDelay: `${bar.delay}ms`,
+              animationFillMode: "backwards",
+              animationDuration: "0.6s",
+              animationTimingFunction: "cubic-bezier(.22,1,.36,1)",
             }}
-            labelStyle={{ color: "#0b0b0b", fontWeight: 600 }}
-            formatter={(value: ValueType | undefined) => [`${value ?? 0}h`, "Logged"]}
           />
-          <Bar dataKey="hours" fill={BAR_COLOR} radius={[4, 4, 0, 0]} maxBarSize={28} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+          <text
+            x={bar.labelX}
+            y={140}
+            textAnchor="middle"
+            fontSize={9.5}
+            fontWeight={700}
+            fill="#B7A996"
+          >
+            {bar.label}
+          </text>
+        </g>
+      ))}
+    </svg>
   )
 }

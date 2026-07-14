@@ -2,9 +2,6 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Trash2 } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
 
 interface DeleteSkillButtonProps {
   skillId: string
@@ -31,15 +28,14 @@ export function DeleteSkillButton({ skillId, skillName }: DeleteSkillButtonProps
   }
 
   return (
-    <Button
+    <button
       type="button"
-      variant="ghost"
-      size="icon"
       disabled={deleting}
       onClick={handleDelete}
       aria-label={`Delete ${skillName}`}
+      className="rounded-md p-1.5 text-[17px] text-[#D8CDBE] disabled:opacity-50"
     >
-      <Trash2 className="size-4 text-muted-foreground" />
-    </Button>
+      ✕
+    </button>
   )
 }

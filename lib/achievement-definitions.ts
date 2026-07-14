@@ -53,4 +53,58 @@ export const ACHIEVEMENT_DEFINITIONS = [
     description: "Complete a session before 7am",
     icon: "🌅",
   },
+  {
+    key: "sessions_10",
+    title: "Getting Started",
+    description: "Complete 10 focus sessions",
+    icon: "🌱",
+  },
+  {
+    key: "sessions_50",
+    title: "Half Century",
+    description: "Complete 50 focus sessions",
+    icon: "🌿",
+  },
+  {
+    key: "sessions_100",
+    title: "Centurion",
+    description: "Complete 100 focus sessions",
+    icon: "🌳",
+  },
+  {
+    key: "long_session",
+    title: "Deep Diver",
+    description: "Complete a single session of 60+ minutes",
+    icon: "🤿",
+  },
+  {
+    key: "weekend_warrior",
+    title: "Weekend Warrior",
+    description: "Complete a session on both Saturday and Sunday of the same week",
+    icon: "🛡️",
+  },
+  {
+    key: "skill_master",
+    title: "Skill Mastery",
+    description: "Reach a skill's target hours goal",
+    icon: "👑",
+  },
+  {
+    key: "explorer",
+    title: "Explorer",
+    description: "Complete sessions across 3 or more different skills",
+    icon: "🧭",
+  },
+  {
+    key: "comeback",
+    title: "The Comeback",
+    description: "Rebuild your streak to 7 days after a reset",
+    icon: "💪",
+  },
+  {
+    key: "resisted_temptation",
+    title: "Stayed the Course",
+    description: "Chose to keep focusing instead of stopping early, 5 times",
+    icon: "🧘",
+  },
 ] as const

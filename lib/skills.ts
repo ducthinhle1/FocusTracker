@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { dateKeyInTimezone, dateKeyToUtcNoon, shiftDateKey } from "@/lib/date"
 
 /** Monday-anchored week-start key for the calendar day `key` is in. */
-function weekStartKeyFor(key: string, timezone: string): string {
+export function weekStartKeyFor(key: string, timezone: string): string {
   const dow = dateKeyToUtcNoon(key).getUTCDay() // 0=Sun..6=Sat (safe: noon-UTC anchor)
   const daysSinceMonday = (dow + 6) % 7
   return shiftDateKey(key, -daysSinceMonday, timezone)

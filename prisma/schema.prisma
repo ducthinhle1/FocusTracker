@@ -13,17 +13,19 @@ datasource db {
 // Placeholder model for Phase 1 (auth only).
 // Extended in later phases with sessions, skills, achievements, etc.
 model User {
-  id              String            @id
-  email           String            @unique
-  timezone        String            @default("UTC")
-  createdAt       DateTime          @default(now())
-  currentStreak   Int               @default(0)
-  longestStreak   Int               @default(0)
-  lastSessionDate DateTime?
-  sessions        Session[]
-  achievements    UserAchievement[]
-  skills          Skill[]
-  insights        Insight[]
+  id                String            @id
+  email             String            @unique
+  timezone          String            @default("UTC")
+  createdAt         DateTime          @default(now())
+  currentStreak     Int               @default(0)
+  longestStreak     Int               @default(0)
+  lastSessionDate   DateTime?
+  keepFocusingCount Int               @default(0)
+  hasHadStreakReset Boolean           @default(false)
+  sessions          Session[]
+  achievements      UserAchievement[]
+  skills            Skill[]
+  insights          Insight[]
 }
 
 model Session {
@@ -75,7 +77,7 @@ model Insight {
   id        String   @id @default(uuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  type      String   // "post_session" | "weekly"
+  type      String // "post_session" | "weekly"
   content   String
   sessionId String?
   createdAt DateTime @default(now())

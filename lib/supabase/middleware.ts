@@ -2,7 +2,12 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 // Routes that do not require an authenticated session.
-const PUBLIC_ROUTES = ["/login", "/auth/callback"]
+const PUBLIC_ROUTES = [
+  "/login",
+  "/auth/callback",
+  "/auth/confirm",
+  "/reset-password",
+]
 
 function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTES.some(
