@@ -2,7 +2,7 @@
 
 A gamified focus-session tracker that helps you build a real attention habit — not just another Pomodoro timer.
 
-**[Live Demo](https://focus-tracker.vercel.app)** <!-- update with your actual production URL -->
+**[Live Demo]([https://focus-tracker.vercel.app](https://focus-tracker-green-five.vercel.app/login))** 
 
 ---
 
